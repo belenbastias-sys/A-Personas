@@ -1,5 +1,5 @@
 ---
-name: nomina-contratos-obra
+name: analisis-contratos-pf-obra-indefinido
 description: >
   Cruza el Reporte de Dotacion (BUK) con el Reporte de Firma de Documentos
   (BUK) de Orizon S.A. / Nutrisco para producir la Nomina de Gestion de
@@ -19,7 +19,7 @@ description: >
   mes en particular.
 ---
 
-# Nomina de Gestion de Contratos (Dotacion x Firma Documentos)
+# Analisis de contratos PF, Obra, Indefinido (Dotacion x Firma Documentos)
 
 Esta skill automatiza el cruce que se arma manualmente cada vez que Belen
 necesita saber, dentro de la dotacion activa, quien tiene contrato firmado,
@@ -64,7 +64,7 @@ porque cambian el resultado:
 ## Como correrlo
 
 ```bash
-python3 skills/nomina-contratos-obra/scripts/generar_reporte.py \
+python3 skills/analisis-contratos-pf-obra-indefinido/scripts/generar_reporte.py \
   --dotacion "<ruta Reporte Dotacion Coordinador.xlsx>" \
   --firma "<ruta Reporte de Firma Documentos.xlsx>" \
   --output "<ruta de salida .xlsx>" \
