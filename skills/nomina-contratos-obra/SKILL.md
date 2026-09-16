@@ -128,4 +128,28 @@ se excluyen certificados y anexos de politica/conflicto de intereses).
 3. Todo pendiente detectado (discrepancias, anomalias, sin contrato) va a
    la Bitacora de Compromisos en Notion via la skill `notion-bitacora` —
    nunca en un informe aparte. Pregunta antes de cargarlos si no te lo
-   pidieron explicitamente.
+   pidieron explicitamente. Confirma tambien si algun subconjunto debe
+   quedar fuera de la carga (por ejemplo, casos que Belen prefiere resolver
+   fuera del sistema antes de registrarlos) — no asumas que "cargar" es
+   "cargar todo".
+4. Antes de crear filas nuevas, corre la busqueda de duplicados por RUT que
+   indica `notion-bitacora` contra la Bitacora. Si una persona ya tiene una
+   fila abierta mostrando un pendiente **distinto** al que acabas de
+   detectar (por ejemplo, ya tenia una correccion de Centro de Costo
+   pendiente y ahora aparece con discrepancia de Tipo de Contrato), no la
+   fusiones ni la ignores: crea la fila nueva para el hallazgo nuevo y
+   referencia la URL de la fila existente dentro de la Nota, para que quien
+   gestione vea que es la misma persona con dos pendientes separados.
+
+## Aprendizajes de corridas reales (no borrar al actualizar)
+
+- El primer corte que se armo a mano solo miraba "Tipo de Contrato = Obra".
+  Al correr el script sobre los 3 tipos aparecieron 2 casos de "sin
+  contrato" dentro de Plazo Fijo que nadie habia visto porque nunca se
+  habia mirado ese subconjunto — restringir el universo de entrada esconde
+  hallazgos reales. Por default, corre siempre sobre los 3 tipos validos
+  salvo que te pidan explicitamente limitarlo a uno.
+- El patron "PF" aparece tanto pegado a "Contrato" (ej. "Contrato ... - PF
+  ...") como escrito completo "plazo fijo" en el nombre del archivo, y
+  ambas formas deben mapear a Plazo Fijo — no asumas que "PF" siempre viene
+  como sigla.
