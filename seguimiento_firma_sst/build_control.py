@@ -14,11 +14,14 @@ EMISION = dt.date(2026, 11, 24)
 OBSOLETOS = {"ETI", "A1", "A2", "A3", "A4", "BB", "E"}
 CAMP = "SST-OR-MR"
 
+import os, csv
+def gen_of(path):
+    t = next(openpyxl.load_workbook(path, read_only=True).worksheets[0].iter_rows(min_row=2, max_row=2, values_only=True))[0]
+    m = re.search(r"(\d{2})/(\d{2})/(\d{4}) a las (\d{2}):(\d{2})(AM|PM)", t)
+    hh = int(m[4]) % 12 + (12 if m[6] == "PM" else 0)
+    return dt.datetime(int(m[3]), int(m[2]), int(m[1]), hh, int(m[5]))
 raw = list(openpyxl.load_workbook(SRC, read_only=True).worksheets[0].iter_rows(values_only=True))
-gen_txt = raw[1][0]
-m = re.search(r"(\d{2})/(\d{2})/(\d{4}) a las (\d{2}):(\d{2})(AM|PM)", gen_txt)
-hh = int(m[4]) % 12 + (12 if m[6] == "PM" else 0)
-GEN = dt.datetime(int(m[3]), int(m[2]), int(m[1]), hh, int(m[5]))
+GEN = gen_of(SRC); PGEN = gen_of(PREV)
 
 x = pd.read_excel(SRC, header=5)
 n_rows = len(x)
@@ -74,7 +77,7 @@ for i, row in enumerate(raw, 1):
     for j, v in enumerate(row, 1):
         if v is not None: ex.cell(i, j, v)
 ex.sheet_properties.tabColor = NAR
-MAXR = 5000
+MAXR = max(30000, len(raw) + 1000)
 def X(col):  # columna del export por nombre de encabezado (robusto a cambios de orden)
     return f'INDEX(Export_Buk!$A$7:$AZ${MAXR},0,MATCH("{col}",Export_Buk!$A$6:$AZ$6,0))'
 BASE = f'{X("Estado")},"Activo",{X("Nombre de Archivo")},Control!$C$5'
@@ -176,9 +179,24 @@ c.conditional_formatting.add("F8", FormulaRule(formula=['LEFT(F8,2)="🟢"'], fi
 # Registro de cortes (a la derecha)
 c["J13"] = "REGISTRO DE CORTES (lunes, miércoles y viernes 08:00)"; c["J13"].font = Font(bold=True, color=AZ)
 header(c, 14, ["Corte", "Emitidos", "Firmados", "Pendientes", "% Avance", "Firmaron en el período", "Fuente"], c0=10)
-cortes = [(dt.datetime(2026, 11, 24, 13, 18), 758, 98, 660, "Informe Mensual 13:18 (línea base)"),
-          (dt.datetime(2026, 11, 24, 14, 15), 758, 146, 612, "Reporte Firma OK 14:15"),
-          (GEN, len(d), int(len(d) - d.Pendiente.sum()), int(d.Pendiente.sum()), f"Reporte Firma OK {GEN:%H:%M}")]
+# histórico de cortes persistente (CSV junto al Excel), upsert por fecha/hora de corte
+HIST = os.path.join(os.path.dirname(os.path.abspath(OUT)), "historico_cortes_sst.csv")
+hist = {}
+if os.path.exists(HIST):
+    for row in csv.DictReader(open(HIST, encoding="utf-8")):
+        hist[row["corte"]] = (int(row["emitidos"]), int(row["firmados"]), int(row["pendientes"]), row["fuente"])
+else:
+    hist = {"2026-11-24 13:18": (758, 98, 660, "Informe Mensual 13:18 (línea base)"),
+            "2026-11-24 14:15": (758, 146, 612, "Reporte Firma OK 24-11 14:15"),
+            "2026-11-24 14:35": (758, 156, 602, "Reporte Firma OK 24-11 14:35")}
+hist[f"{PGEN:%Y-%m-%d %H:%M}"] = (len(pv), int((pv["Estado Firma Trabajador(a)"] == "Firmado").sum()),
+                                  int((pv["Estado Firma Trabajador(a)"] == "No firmado").sum()), f"Reporte Firma OK {PGEN:%d-%m %H:%M}")
+hist[f"{GEN:%Y-%m-%d %H:%M}"] = (len(d), int(len(d) - d.Pendiente.sum()), int(d.Pendiente.sum()), f"Reporte Firma OK {GEN:%d-%m %H:%M}")
+with open(HIST, "w", newline="", encoding="utf-8") as fh:
+    w = csv.writer(fh); w.writerow(["corte", "emitidos", "firmados", "pendientes", "fuente"])
+    for k in sorted(hist): w.writerow([k, *hist[k]])
+cortes = [(dt.datetime.strptime(k, "%Y-%m-%d %H:%M"), *hist[k]) for k in sorted(hist)]
+assert len(cortes) <= 14, "registro de cortes lleno"
 for i, (f, e, fi, p, src) in enumerate(cortes):
     rr = 15 + i
     for j, v in enumerate([f, e, fi, p], 10): z = c.cell(rr, j, v); z.font = BLUE
@@ -210,7 +228,7 @@ title(rs, "Avance de firma por Supervisor — se actualiza al pegar un nuevo exp
 rs["B3"] = "Corte:"; rs["C3"] = "=Control!F5"; rs["C3"].number_format = "dd-mm-yyyy hh:mm"; rs["B3"].font = BOLD
 rs["D3"] = "Estado del plazo:"; rs["E3"] = "=Control!F8"; rs["D3"].font = BOLD
 rh = ["N°", "Supervisor", "Correo Supervisor", "Bloque(s)", "Área principal", "Emitidos", "Firmados", "Pendientes",
-      "% Avance", "Semáforo avance", "Pend. corte 14:15", "Δ vs 14:15", "Pend. con fuero", "Personas pend. (corte " + f"{GEN:%H:%M})",
+      "% Avance", "Semáforo avance", f"Pend. corte anterior ({PGEN:%d-%m %H:%M})", "Δ vs corte anterior", "Pend. con fuero", "Personas pend. (corte " + f"{GEN:%H:%M})",
       "Fecha correo seguimiento", "Respuesta / compromiso", "Estado gestión"]
 header(rs, 5, rh)
 for j in (15, 16, 17): rs.cell(5, j).fill = fN
@@ -317,7 +335,7 @@ notas = [
   "Detalle Pendientes es la foto del corte enviado a los supervisores (respaldo de gestión); no cambia al pegar.",
   "Registro de cortes: pegar como valores la fila 'Corte actual' en cada seguimiento lunes, miércoles y viernes 08:00.",
   "Cuadratura automática (Control): si un export trae un supervisor que no está en la lista, aparece '⚠️ No cuadra'.",
-  "Límite: el export se lee hasta la fila 5.000."]),
+  f"El export se lee hasta la fila {MAXR:,}".replace(",", ".") + ". Los exports de Buk cambian de rango de fechas (ej. 25-11 desde 01-11, 26-11 desde 01-09); el filtro de campaña deja solo los procedimientos SST, así que el rango no altera las cifras."]),
  ("4. Calidad de datos", [
   "Duplicados (RUT + Nombre de Archivo): 0.",
   f"{n_two} personas con 2 documentos pendientes: son procedimientos de SST distintos, no duplicados.",
@@ -333,9 +351,10 @@ for t, items in notas:
         z = nt.cell(rr, 1, "• " + it); z.alignment = Alignment(wrap_text=True, vertical="top"); rr += 1
     rr += 1
 nt.cell(rr, 1, "RECOMENDACIÓN DE GESTIÓN").font = Font(bold=True, color="FFFFFF", size=12); nt.cell(rr, 1).fill = fN; rr += 1
-reco = (f"En las primeras 2,5 horas firmaron 58 documentos (660 → {len(pend)}), sin gestión activa: el avance orgánico ya se está frenando "
-        f"(48 en la 1ª hora, 10 en los 20 minutos siguientes). Enviar hoy el correo de seguimiento a los {int((g.pend>0).sum())} supervisores; "
-        f"los 10 primeros concentran {int(top.pend.sum())} pendientes ({top.pend.sum()/len(pend):.0%}) y son la prioridad de llamada del lunes 30-11. "
+p0 = cortes[0][3]; pp_ = cortes[-2][3]
+reco = (f"Avance acumulado: {p0} → {len(pend)} pendientes desde la línea base ({1-len(pend)/len(d):.1%} firmado); "
+        f"{pp_ - len(pend)} documentos firmados desde el corte anterior ({PGEN:%d-%m %H:%M}). Enviar el correo de seguimiento a los {int((g.pend>0).sum())} supervisores con pendientes; "
+        f"los 10 primeros concentran {int(top.pend.sum())} pendientes ({top.pend.sum()/len(pend):.0%}) y son la prioridad de llamada del lunes 30-11 (plazo vence el martes 01-12). "
         "Validar fuero/licencias antes de escalar. Al cierre (04-12), los no firmados van a la Bitácora de Compromisos en Notion, previa validación de jefatura.")
 z = nt.cell(rr, 1, reco); z.alignment = Alignment(wrap_text=True, vertical="top"); nt.row_dimensions[rr].height = 80
 nt.column_dimensions["A"].width = 150; nt.sheet_view.showGridLines = False

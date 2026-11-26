@@ -33,7 +33,8 @@ Fuente esperada: Buk, *Reporte de Firma Documentos OK 2026*, con 5 filas de meta
 - Control de duplicados: RUT + Nombre de Archivo (se detiene si encuentra alguno).
 - Paleta azul (#1F4E79 / #2E75B6 / #DDEBF7), sin naranja. Firma de correos: "Equipo SST Orizon S.A.".
 
-## Pendiente de actualizar en cada corte
+## Histórico de cortes
 
-- `build_control.py`: lista `cortes` (registro histórico precargado) y la etiqueta "Pend. corte 14:15" del Resumen por Supervisor.
-- `build_correos.py`: nombre del Excel de respaldo citado en el encabezado.
+`build_control.py` mantiene `historico_cortes_sst.csv` junto al Excel de salida (una fila por corte, se actualiza por fecha y hora de generación, sin duplicar). Ese CSV alimenta el Registro de cortes de la hoja Control. Guárdalo junto a los Excel: si se pierde, el registro vuelve a partir desde los tres cortes del 24-11.
+
+La hoja Export_Buk se lee hasta max(30.000, filas del export + 1.000). Los exports de Buk cambian de rango de fechas entre un día y otro; el filtro de campaña deja solo los procedimientos SST.

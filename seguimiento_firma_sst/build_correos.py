@@ -19,7 +19,7 @@ h=doc.add_heading('Correos de seguimiento — Firma de procedimientos de SST',0)
 for r in h.runs: r.font.color.rgb=AZ
 doc.add_paragraph(f'Corte: {CORTE} · Emisión: 24-11-2026 · Plazo de firma: martes 01-12-2026 (5 días hábiles). '
   f'{len(p)} procedimientos pendientes de firma de {p["Número de Documento"].nunique()} personas, {len(g)} supervisores. '
-  'Un correo por supervisor, ordenados de mayor a menor pendiente. Respaldo: Control_Avance_Firma_SST_Respaldo_Gestion_20261124.xlsx (hoja Detalle Pendientes).')
+  'Un correo por supervisor, ordenados de mayor a menor pendiente. Respaldo: '+__import__('os').path.basename(F)+' (hoja Detalle Pendientes).')
 t=doc.add_table(rows=1,cols=5); t.style='Table Grid'; hrow(t,['N°','Supervisor','Bloque(s)','Firmados / Emitidos','Pendientes'],'1F4E79')
 for i,(s,r) in enumerate(g.iterrows(),1):
     cs=t.add_row().cells
